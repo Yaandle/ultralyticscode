@@ -6,7 +6,7 @@ import os
 import cv2
 
 def process_video(video_path):
-    model = YOLO("E:\odisGPU\models\MiFood\MF Segment 3.0.pt")
+    model = YOLO("models\MF Segment 3.0.pt")
 
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
@@ -48,5 +48,5 @@ def process_video(video_path):
     out.release()
     cv2.destroyAllWindows()
 
-video_path = "E:/odisGPU/dataset/videos/grapesvide.mp4"
+video_path = "videos/video.mp4"
 process_video(video_path)
