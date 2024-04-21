@@ -4,8 +4,8 @@ import torchvision
 import time
 import os
 
-source = 'E:\odis\odistesting\Testing\dataset\imaegimages' 
-model = YOLO("E:\odis\odistesting\Testing\models\Model4600.pt")
+source = 'E:\Testing\dataset\imaegimages' 
+model = YOLO("\Testing\models\Model4600.pt")
 
 
 image_files = [f for f in os.listdir(source) if f.endswith(('.jpg', '.jpeg', '.png'))]
