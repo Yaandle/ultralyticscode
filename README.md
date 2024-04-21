@@ -1,5 +1,3 @@
-Here's a condensed version of the README file:
-
 # Ultralytics YOLOv8 Inference
 
 This repository contains three applications for running object detection and segmentation using the Ultralytics YOLOv8 model: image, video, and live video stream inference.
