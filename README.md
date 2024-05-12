@@ -30,6 +30,15 @@ This repository contains three applications for running object detection and seg
 3. Adjust `conf` and `device` if needed
 4. Run: `python stream.py`
 
+### Camera Stream Inference
+* We are using Intel D145 *
+1. 'pip install pyrealsense2'
+2. Open `camera.py`
+3. Change `model_path`
+4. Adjust `conf` and `device` if needed
+5. Run: `python camera.py`
+   
+
 ## Notes
 
 - Remove `device` parameter if not using GPU
