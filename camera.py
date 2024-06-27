@@ -5,7 +5,6 @@ import numpy as np
 import time
 
 def map_coordinates(coords, img_shape):
-
     return coords
 
 def get_depth_value(depth_frame, x, y):
@@ -50,7 +49,6 @@ def print_detections(detections):
 
 def display_frame(frame, results):
     for result in results:
-        # Ensure the frame is a numpy array and set relevant plot parameters
         frame = result.plot(conf=True, line_width=2, font_size=0.5, labels=True, boxes=True, masks=True, probs=True, img=frame)
     return frame
 
@@ -61,6 +59,10 @@ def process_realsense():
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
     config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
     pipeline.start(config)
+
+    fps = 0
+    frame_count = 0
+    start_time = time.time()
 
     try:
         while True:
@@ -77,13 +79,18 @@ def process_realsense():
             print_detections(output)
 
             frame = display_frame(frame, results)
-            cv2.imshow('RealSense Stream', cv2.resize(frame, (960, 540)))
+            frame_count += 1
+            if frame_count >= 10:
+                end_time = time.time()
+                fps = frame_count / (end_time - start_time)
+                frame_count = 0
+                start_time = end_time
 
+            cv2.putText(frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
+            cv2.imshow('RealSense Stream', cv2.resize(frame, (960, 540)))
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
-
-            time.sleep(0.5)  
     finally:
         pipeline.stop()
         cv2.destroyAllWindows()
