@@ -15,19 +15,43 @@ def convert_depth_to_units(depth_value):
     depth_in = depth_cm / 2.54    
     return depth_cm, depth_in
 
+def calculate_width(mask, y_center):
+    if mask.ndim == 2:
+        center_row = mask[y_center]
+    elif mask.ndim == 3:
+        center_row = mask[y_center, :]
+    else:
+        return None
+    true_indices = np.where(center_row > 0.5)[0]  
+    if len(true_indices) > 0:
+        left_edge = true_indices[0]
+        right_edge = true_indices[-1]
+        return right_edge - left_edge
+    return None
+
 def process_detections(detections, img_shape, depth_frame):
     output = []
     for detection in detections:
         boxes = detection.boxes.cpu().numpy()
+        masks = detection.masks.data if detection.masks is not None else None
         if len(boxes) == 0:
             continue
-        for box, conf, cls in zip(boxes.xyxy, boxes.conf, boxes.cls):
+        for i, (box, conf, cls) in enumerate(zip(boxes.xyxy, boxes.conf, boxes.cls)):
             class_name = detection.names[int(cls)]
             mapped_bbox = map_coordinates(box, img_shape)
             x_center = int((mapped_bbox[0] + mapped_bbox[2]) / 2)
             y_center = int((mapped_bbox[1] + mapped_bbox[3]) / 2)
             depth_value = get_depth_value(depth_frame, x_center, y_center)
             depth_cm, depth_in = convert_depth_to_units(depth_value)
+            width_pixels = None
+            width_cm = None
+            width_in = None
+            if masks is not None:
+                mask = masks[i].cpu().numpy()
+                width_pixels = calculate_width(mask, y_center)
+                if width_pixels is not None:
+                    width_cm = width_pixels * (depth_cm / img_shape[1])
+                    width_in = width_cm / 2.54
 
             detection_data = {
                 "class": class_name,
@@ -36,7 +60,10 @@ def process_detections(detections, img_shape, depth_frame):
                 "center_point": (x_center, y_center),
                 "depth_meters": depth_value,
                 "depth_cm": depth_cm,
-                "depth_in": depth_in
+                "depth_in": depth_in,
+                "width_pixels": width_pixels,
+                "width_cm": width_cm,
+                "width_in": width_in
             }
 
             output.append(detection_data)
@@ -53,27 +80,37 @@ def print_detections(detections):
             print(f" Center Point: {detection['center_point']}")
             print(f" Depth: {detection['depth_meters']:.2f} meters ({detection['depth_cm']:.2f} cm / {detection['depth_in']:.2f} inches)")
             print(f" Confidence: {detection['confidence']:.2f}")
+            if detection['width_pixels'] is not None:
+                print(f" Width: {detection['width_pixels']} pixels ({detection['width_cm']:.2f} cm / {detection['width_in']:.2f} inches)")
             print()
 
 def display_frame(frame, results, depth_frame):
     for result in results:
         boxes = result.boxes.cpu().numpy()
-        for box, cls in zip(boxes.xyxy, boxes.cls):
+        masks = result.masks.data if result.masks is not None else None
+        for i, (box, cls) in enumerate(zip(boxes.xyxy, boxes.cls)):
             x1, y1, x2, y2 = map(int, box[:4])
             class_name = result.names[int(cls)]
             x_center = int((x1 + x2) / 2)
             y_center = int((y1 + y2) / 2)
             depth_value = get_depth_value(depth_frame, x_center, y_center)
             depth_cm, depth_in = convert_depth_to_units(depth_value)
-            
             cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            label = f"{class_name}: {depth_value:.2f}m ({depth_cm:.2f}cm / {depth_in:.2f}in)"
-            cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-    
+            cv2.putText(frame, class_name, (x1, y1 - 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+            depth_label = f"Depth: {depth_value:.2f}m ({depth_cm:.2f}cm / {depth_in:.2f}in)"
+            cv2.putText(frame, depth_label, (x1, y1 - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+            if masks is not None:
+                mask = masks[i].cpu().numpy()
+                width_pixels = calculate_width(mask, y_center)
+                if width_pixels is not None:
+                    width_cm = width_pixels * (depth_cm / frame.shape[1])
+                    width_in = width_cm / 2.54
+                    width_label = f"Width: {width_cm:.2f}cm / {width_in:.2f}in"
+                    cv2.putText(frame, width_label, (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
     return frame
 
 def process_realsense():
-    model = YOLO("C:/Users/Zac/Desktop/MiFood/Applev5.pt")  # Update Model Path
+    model = YOLO("C:/Users/Bozzy/Desktop/MiFood/Applev6.pt")  # Update Model Path
     pipeline = rs.pipeline()
     config = rs.config()
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
@@ -115,4 +152,5 @@ def process_realsense():
         pipeline.stop()
         cv2.destroyAllWindows()
 
-process_realsense()
+if __name__ == "__main__":
+    process_realsense()
