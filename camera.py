@@ -11,8 +11,8 @@ def get_depth_value(depth_frame, x, y):
     return depth_frame.get_distance(x, y)
 
 def convert_depth_to_units(depth_value):
-    depth_cm = depth_value * 100  # Convert meters to centimeters
-    depth_in = depth_cm / 2.54    # Convert centimeters to inches
+    depth_cm = depth_value * 100  
+    depth_in = depth_cm / 2.54    
     return depth_cm, depth_in
 
 def process_detections(detections, img_shape, depth_frame):
