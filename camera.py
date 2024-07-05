@@ -10,6 +10,11 @@ def map_coordinates(coords, img_shape):
 def get_depth_value(depth_frame, x, y):
     return depth_frame.get_distance(x, y)
 
+def convert_depth_to_units(depth_value):
+    depth_cm = depth_value * 100  # Convert meters to centimeters
+    depth_in = depth_cm / 2.54    # Convert centimeters to inches
+    return depth_cm, depth_in
+
 def process_detections(detections, img_shape, depth_frame):
     output = []
     for detection in detections:
@@ -22,13 +27,16 @@ def process_detections(detections, img_shape, depth_frame):
             x_center = int((mapped_bbox[0] + mapped_bbox[2]) / 2)
             y_center = int((mapped_bbox[1] + mapped_bbox[3]) / 2)
             depth_value = get_depth_value(depth_frame, x_center, y_center)
+            depth_cm, depth_in = convert_depth_to_units(depth_value)
 
             detection_data = {
                 "class": class_name,
                 "bbox": mapped_bbox,
                 "confidence": conf,
                 "center_point": (x_center, y_center),
-                "depth": depth_value
+                "depth_meters": depth_value,
+                "depth_cm": depth_cm,
+                "depth_in": depth_in
             }
 
             output.append(detection_data)
@@ -43,17 +51,29 @@ def print_detections(detections):
             print(f" Class: {detection['class']}")
             print(f" Bounding Box: {detection['bbox']}")
             print(f" Center Point: {detection['center_point']}")
-            print(f" Depth: {detection['depth']:.2f} meters")
+            print(f" Depth: {detection['depth_meters']:.2f} meters ({detection['depth_cm']:.2f} cm / {detection['depth_in']:.2f} inches)")
             print(f" Confidence: {detection['confidence']:.2f}")
             print()
 
-def display_frame(frame, results):
+def display_frame(frame, results, depth_frame):
     for result in results:
-        frame = result.plot(conf=True, line_width=2, font_size=0.5, labels=True, boxes=True, masks=True, probs=True, img=frame)
+        boxes = result.boxes.cpu().numpy()
+        for box, cls in zip(boxes.xyxy, boxes.cls):
+            x1, y1, x2, y2 = map(int, box[:4])
+            class_name = result.names[int(cls)]
+            x_center = int((x1 + x2) / 2)
+            y_center = int((y1 + y2) / 2)
+            depth_value = get_depth_value(depth_frame, x_center, y_center)
+            depth_cm, depth_in = convert_depth_to_units(depth_value)
+            
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            label = f"{class_name}: {depth_value:.2f}m ({depth_cm:.2f}cm / {depth_in:.2f}in)"
+            cv2.putText(frame, label, (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+    
     return frame
 
 def process_realsense():
-    model = YOLO("C:/Users/Bozzy/Desktop/MiFood/MiFood/fruits.pt")
+    model = YOLO("C:/Users/Zac/Desktop/MiFood/Applev5.pt")  # Update Model Path
     pipeline = rs.pipeline()
     config = rs.config()
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
@@ -74,11 +94,11 @@ def process_realsense():
                 continue
 
             frame = np.asanyarray(color_frame.get_data())
-            results = model(frame, conf=0.3, show_conf=True, show_labels=True)
+            results = model(frame, conf=0.7, show_conf=False, show_labels=False, device=0)
             output = process_detections(results, frame.shape, depth_frame)
             print_detections(output)
 
-            frame = display_frame(frame, results)
+            frame = display_frame(frame, results, depth_frame)
             frame_count += 1
             if frame_count >= 10:
                 end_time = time.time()
