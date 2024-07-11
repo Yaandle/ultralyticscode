@@ -5,7 +5,7 @@ import numpy as np
 import time
 
 def map_coordinates(coords, img_shape):
-    return coords
+    return [int(c) for c in coords]
 
 def get_depth_value(depth_frame, x, y):
     return depth_frame.get_distance(x, y)
@@ -19,7 +19,7 @@ def calculate_width(mask, y_center):
     if mask.ndim == 2:
         center_row = mask[y_center]
     elif mask.ndim == 3:
-        center_row = mask[y_center, :]
+        center_row = mask[y_center, :, 0] 
     else:
         return None
     true_indices = np.where(center_row > 0.5)[0]  
@@ -33,9 +33,7 @@ def process_detections(detections, img_shape, depth_frame):
     output = []
     for detection in detections:
         boxes = detection.boxes.cpu().numpy()
-        masks = detection.masks.data if detection.masks is not None else None
-        if len(boxes) == 0:
-            continue
+        masks = detection.masks.data.cpu().numpy() if detection.masks is not None else None
         for i, (box, conf, cls) in enumerate(zip(boxes.xyxy, boxes.conf, boxes.cls)):
             class_name = detection.names[int(cls)]
             mapped_bbox = map_coordinates(box, img_shape)
@@ -47,7 +45,7 @@ def process_detections(detections, img_shape, depth_frame):
             width_cm = None
             width_in = None
             if masks is not None:
-                mask = masks[i].cpu().numpy()
+                mask = masks[i]
                 width_pixels = calculate_width(mask, y_center)
                 if width_pixels is not None:
                     width_cm = width_pixels * (depth_cm / img_shape[1])
@@ -63,7 +61,8 @@ def process_detections(detections, img_shape, depth_frame):
                 "depth_in": depth_in,
                 "width_pixels": width_pixels,
                 "width_cm": width_cm,
-                "width_in": width_in
+                "width_in": width_in,
+                "mask": mask if masks is not None else None
             }
 
             output.append(detection_data)
@@ -84,38 +83,37 @@ def print_detections(detections):
                 print(f" Width: {detection['width_pixels']} pixels ({detection['width_cm']:.2f} cm / {detection['width_in']:.2f} inches)")
             print()
 
-def display_frame(frame, results, depth_frame):
-    for result in results:
-        boxes = result.boxes.cpu().numpy()
-        masks = result.masks.data if result.masks is not None else None
-        for i, (box, cls) in enumerate(zip(boxes.xyxy, boxes.cls)):
-            x1, y1, x2, y2 = map(int, box[:4])
-            class_name = result.names[int(cls)]
-            x_center = int((x1 + x2) / 2)
-            y_center = int((y1 + y2) / 2)
-            depth_value = get_depth_value(depth_frame, x_center, y_center)
-            depth_cm, depth_in = convert_depth_to_units(depth_value)
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(frame, class_name, (x1, y1 - 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-            depth_label = f"Depth: {depth_value:.2f}m ({depth_cm:.2f}cm / {depth_in:.2f}in)"
-            cv2.putText(frame, depth_label, (x1, y1 - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
-            if masks is not None:
-                mask = masks[i].cpu().numpy()
-                width_pixels = calculate_width(mask, y_center)
-                if width_pixels is not None:
-                    width_cm = width_pixels * (depth_cm / frame.shape[1])
-                    width_in = width_cm / 2.54
-                    width_label = f"Width: {width_cm:.2f}cm / {width_in:.2f}in"
-                    cv2.putText(frame, width_label, (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+def display_frame(frame, detections):
+    for detection in detections:
+        x1, y1, x2, y2 = map(int, detection['bbox'])
+        class_name = detection['class']
+        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+        cv2.putText(frame, class_name, (x1, y1 - 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+        depth_label = f"Depth: {detection['depth_meters']:.2f}m ({detection['depth_cm']:.2f}cm / {detection['depth_in']:.2f}in)"
+        cv2.putText(frame, depth_label, (x1, y1 - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        if detection['width_pixels'] is not None:
+            width_label = f"Width: {detection['width_cm']:.2f}cm / {detection['width_in']:.2f}in"
+            cv2.putText(frame, width_label, (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        if detection['mask'] is not None:
+            mask = detection['mask'].astype(np.uint8) * 255
+            mask = cv2.resize(mask, (x2 - x1, y2 - y1))
+            colored_mask = cv2.applyColorMap(mask, cv2.COLORMAP_JET)
+            subframe = frame[y1:y2, x1:x2]
+            if subframe.shape[:2] == colored_mask.shape[:2]:
+                alpha = 0.5
+                cv2.addWeighted(colored_mask, alpha, subframe, 1 - alpha, 0, subframe)
+                frame[y1:y2, x1:x2] = subframe
     return frame
 
 def process_realsense():
-    model = YOLO("C:/Users/Bozzy/Desktop/MiFood/Applev6.pt")  # Update Model Path
+    model = YOLO("C:/Users/Bozzy/Desktop/MiFood/yolov8x")  # Update Model Path
     pipeline = rs.pipeline()
     config = rs.config()
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
     config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
     pipeline.start(config)
+    align_to = rs.stream.color
+    align = rs.align(align_to)
 
     fps = 0
     frame_count = 0
@@ -124,9 +122,9 @@ def process_realsense():
     try:
         while True:
             frames = pipeline.wait_for_frames()
-            color_frame = frames.get_color_frame()
-            depth_frame = frames.get_depth_frame()
-
+            aligned_frames = align.process(frames)
+            color_frame = aligned_frames.get_color_frame()
+            depth_frame = aligned_frames.get_depth_frame()
             if not color_frame or not depth_frame:
                 continue
 
@@ -135,7 +133,7 @@ def process_realsense():
             output = process_detections(results, frame.shape, depth_frame)
             print_detections(output)
 
-            frame = display_frame(frame, results, depth_frame)
+            frame = display_frame(frame, output)
             frame_count += 1
             if frame_count >= 10:
                 end_time = time.time()
