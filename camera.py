@@ -196,7 +196,7 @@ def process_webcam():
     config.enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 30)
     pipeline.start(config)
 
-    model = YOLO("C:/Users/Bozzy/Desktop/MiFood/segmentation_model.pt")  # Update Model Path
+    model = YOLO("C://MiFood/segmentation_model.pt")  # Update Model Path
     
     tracker = ObjectTracker()
     fps = 0
