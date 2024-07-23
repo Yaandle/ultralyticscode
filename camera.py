@@ -1,19 +1,11 @@
 import cv2
-import pyrealsense2 as rs
 from ultralytics import YOLO
 import numpy as np
 import time
+import pyrealsense2 as rs
 
 def map_coordinates(coords, img_shape):
     return [int(c) for c in coords]
-
-def get_depth_value(depth_frame, x, y):
-    return depth_frame.get_distance(x, y)
-
-def convert_depth_to_units(depth_value):
-    depth_cm = depth_value * 100  
-    depth_in = depth_cm / 2.54    
-    return depth_cm, depth_in
 
 def calculate_width(mask, y_center):
     if mask.ndim == 2:
@@ -29,7 +21,7 @@ def calculate_width(mask, y_center):
         return right_edge - left_edge
     return None
 
-def process_detections(detections, img_shape, depth_frame):
+def process_detections(detections, img_shape):
     output = []
     for detection in detections:
         boxes = detection.boxes.cpu().numpy()
@@ -39,29 +31,17 @@ def process_detections(detections, img_shape, depth_frame):
             mapped_bbox = map_coordinates(box, img_shape)
             x_center = int((mapped_bbox[0] + mapped_bbox[2]) / 2)
             y_center = int((mapped_bbox[1] + mapped_bbox[3]) / 2)
-            depth_value = get_depth_value(depth_frame, x_center, y_center)
-            depth_cm, depth_in = convert_depth_to_units(depth_value)
             width_pixels = None
-            width_cm = None
-            width_in = None
             if masks is not None:
                 mask = masks[i]
                 width_pixels = calculate_width(mask, y_center)
-                if width_pixels is not None:
-                    width_cm = width_pixels * (depth_cm / img_shape[1])
-                    width_in = width_cm / 2.54
 
             detection_data = {
                 "class": class_name,
                 "bbox": mapped_bbox,
                 "confidence": conf,
                 "center_point": (x_center, y_center),
-                "depth_meters": depth_value,
-                "depth_cm": depth_cm,
-                "depth_in": depth_in,
                 "width_pixels": width_pixels,
-                "width_cm": width_cm,
-                "width_in": width_in,
                 "mask": mask if masks is not None else None
             }
 
@@ -77,22 +57,111 @@ def print_detections(detections):
             print(f" Class: {detection['class']}")
             print(f" Bounding Box: {detection['bbox']}")
             print(f" Center Point: {detection['center_point']}")
-            print(f" Depth: {detection['depth_meters']:.2f} meters ({detection['depth_cm']:.2f} cm / {detection['depth_in']:.2f} inches)")
             print(f" Confidence: {detection['confidence']:.2f}")
             if detection['width_pixels'] is not None:
-                print(f" Width: {detection['width_pixels']} pixels ({detection['width_cm']:.2f} cm / {detection['width_in']:.2f} inches)")
+                print(f" Width: {detection['width_pixels']} pixels")
             print()
 
-def display_frame(frame, detections):
+class TrackedObject:
+    def __init__(self, detection, object_id):
+        self.id = object_id
+        self.class_name = detection['class']
+        self.center = detection['center_point']
+        self.last_seen = time.time()
+
+    def update(self, detection):
+        self.center = detection['center_point']
+        self.last_seen = time.time()
+
+class ObjectTracker:
+    def __init__(self, max_disappeared=30, max_distance=50):
+        self.next_object_id = 0
+        self.objects = {}
+        self.disappeared = {}
+        self.max_disappeared = max_disappeared
+        self.max_distance = max_distance
+        self.counts = {}
+
+    def register(self, detection):
+        object_id = self.next_object_id
+        self.objects[object_id] = TrackedObject(detection, object_id)
+        self.disappeared[object_id] = 0
+        self.next_object_id += 1
+        self.update_count(detection['class'], 1)
+
+    def deregister(self, object_id):
+        del self.objects[object_id]
+        del self.disappeared[object_id]
+
+    def update(self, detections):
+        if len(detections) == 0:
+            for object_id in list(self.disappeared.keys()):
+                self.disappeared[object_id] += 1
+                if self.disappeared[object_id] > self.max_disappeared:
+                    self.deregister(object_id)
+            return self.objects
+
+        if len(self.objects) == 0:
+            for detection in detections:
+                self.register(detection)
+        else:
+            object_ids = list(self.objects.keys())
+            object_centers = np.array([obj.center for obj in self.objects.values()])
+            detection_centers = np.array([d['center_point'] for d in detections])
+
+            distances = np.linalg.norm(object_centers[:, np.newaxis] - detection_centers, axis=2)
+            rows = distances.min(axis=1).argsort()
+            cols = distances.argmin(axis=1)[rows]
+
+            used_rows = set()
+            used_cols = set()
+
+            for (row, col) in zip(rows, cols):
+                if row in used_rows or col in used_cols:
+                    continue
+
+                if distances[row, col] > self.max_distance:
+                    continue
+
+                object_id = object_ids[row]
+                self.objects[object_id].update(detections[col])
+                self.disappeared[object_id] = 0
+
+                used_rows.add(row)
+                used_cols.add(col)
+
+            unused_rows = set(range(distances.shape[0])) - used_rows
+            unused_cols = set(range(distances.shape[1])) - used_cols
+
+            if distances.shape[0] >= distances.shape[1]:
+                for row in unused_rows:
+                    object_id = object_ids[row]
+                    self.disappeared[object_id] += 1
+                    if self.disappeared[object_id] > self.max_disappeared:
+                        self.deregister(object_id)
+            else:
+                for col in unused_cols:
+                    self.register(detections[col])
+
+        return self.objects
+
+    def update_count(self, class_name, count):
+        if class_name not in self.counts:
+            self.counts[class_name] = count
+        else:
+            self.counts[class_name] += count
+
+    def get_counts(self):
+        return self.counts
+
+def display_frame(frame, detections, tracker):
     for detection in detections:
         x1, y1, x2, y2 = map(int, detection['bbox'])
         class_name = detection['class']
         cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.putText(frame, class_name, (x1, y1 - 40), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-        depth_label = f"Depth: {detection['depth_meters']:.2f}m ({detection['depth_cm']:.2f}cm / {detection['depth_in']:.2f}in)"
-        cv2.putText(frame, depth_label, (x1, y1 - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        cv2.putText(frame, class_name, (x1, y1 - 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
         if detection['width_pixels'] is not None:
-            width_label = f"Width: {detection['width_cm']:.2f}cm / {detection['width_in']:.2f}in"
+            width_label = f"Width: {detection['width_pixels']} pixels"
             cv2.putText(frame, width_label, (x1, y1), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
         if detection['mask'] is not None:
             mask = detection['mask'].astype(np.uint8) * 255
@@ -103,18 +172,33 @@ def display_frame(frame, detections):
                 alpha = 0.5
                 cv2.addWeighted(colored_mask, alpha, subframe, 1 - alpha, 0, subframe)
                 frame[y1:y2, x1:x2] = subframe
+
+    counts = tracker.get_counts()
+    y_offset = 60
+    for class_name, count in counts.items():
+        cv2.putText(frame, f"{class_name}: {count}", (10, y_offset), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+        y_offset += 30
+
     return frame
 
-def process_realsense():
-    model = YOLO("C:/Users/Bozzy/Desktop/MiFood/yolov8x")  # Update Model Path
+def create_camera(camera_id):
+    cap = cv2.VideoCapture(camera_id)
+    if not cap.isOpened():
+        print(f"Error: Could not open camera {camera_id}")
+        return None
+    return cap
+
+def process_webcam():
     pipeline = rs.pipeline()
     config = rs.config()
     config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
     config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+    config.enable_stream(rs.stream.infrared, 640, 480, rs.format.y8, 30)
     pipeline.start(config)
-    align_to = rs.stream.color
-    align = rs.align(align_to)
 
+    model = YOLO("C:/Users/Bozzy/Desktop/MiFood/segmentation_model.pt")  # Update Model Path
+    
+    tracker = ObjectTracker()
     fps = 0
     frame_count = 0
     start_time = time.time()
@@ -122,27 +206,34 @@ def process_realsense():
     try:
         while True:
             frames = pipeline.wait_for_frames()
-            aligned_frames = align.process(frames)
-            color_frame = aligned_frames.get_color_frame()
-            depth_frame = aligned_frames.get_depth_frame()
-            if not color_frame or not depth_frame:
+            depth_frame = frames.get_depth_frame()
+            color_frame = frames.get_color_frame()
+            infrared_frame = frames.get_infrared_frame()
+            
+            if not depth_frame or not color_frame or not infrared_frame:
                 continue
+            depth_image = np.asanyarray(depth_frame.get_data())
+            color_image = np.asanyarray(color_frame.get_data())
+            infrared_image = np.asanyarray(infrared_frame.get_data())
+            depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(depth_image, alpha=0.03), cv2.COLORMAP_JET)
+            
 
-            frame = np.asanyarray(color_frame.get_data())
-            results = model(frame, conf=0.7, show_conf=False, show_labels=False, device=0)
-            output = process_detections(results, frame.shape, depth_frame)
+            results = model(color_image, conf=0.3, show_conf=False, show_labels=False, device=0)               # Configure predict arguments
+            output = process_detections(results, color_image.shape)
             print_detections(output)
-
-            frame = display_frame(frame, output)
+            tracker.update(output)
+            color_image = display_frame(color_image, output, tracker)
             frame_count += 1
             if frame_count >= 10:
                 end_time = time.time()
                 fps = frame_count / (end_time - start_time)
                 frame_count = 0
                 start_time = end_time
-
-            cv2.putText(frame, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
-            cv2.imshow('RealSense Stream', cv2.resize(frame, (960, 540)))
+            cv2.putText(color_image, f"FPS: {fps:.2f}", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
+            cv2.imshow('RGB Camera', cv2.resize(color_image, (640, 480)))
+            cv2.imshow('Depth Camera', cv2.resize(depth_colormap, (640, 480)))
+            cv2.imshow('Infrared Camera', cv2.resize(infrared_image, (640, 480)))
+            
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
@@ -151,4 +242,4 @@ def process_realsense():
         cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    process_realsense()
+    process_webcam()
