@@ -37,7 +37,7 @@ This repository contains three applications for running object detection and seg
 3. Change `model_path`
 4. Adjust `conf` and `device` if needed
 5. Run: `python camera.py`
-   
+Streams RGB, Depth and Infared
 
 ## Notes
 
