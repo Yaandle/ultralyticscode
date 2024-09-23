@@ -46,7 +46,7 @@ def print_detections(detections):
             print()
 
 def process_webcam():
-    model = YOLO("C:/Users/Bozzy/Desktop/streamlitMiFood/Streamlit/UltralyticsModels/StrawberryV6.pt")
+    model = YOLO("/UltralyticsModels/StrawberryV6.pt")
     cap = cv2.VideoCapture(0)
 
     while True:
