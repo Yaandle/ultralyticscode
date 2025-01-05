@@ -11,7 +11,6 @@ import logging
 
 class FruitDetectionSystem:
     def __init__(self, model_path, output_dir="collected_data"):
-        # Configure logging
         logging.basicConfig(
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s'
@@ -123,23 +122,18 @@ class FruitDetectionSystem:
         for result in results:
             boxes = result.boxes.cpu().numpy()
             masks = result.masks.cpu().numpy() if result.masks is not None else None
-            
+        
             if len(boxes) == 0:
                 continue
-
             for i, (box, mask) in enumerate(zip(boxes.xyxy, masks)):
                 self.detection_count += 1
                 detection_id = f"D{self.detection_count}"
-                
-                # Extract detection information
                 x1, y1, x2, y2 = [int(coord) for coord in box]
                 class_name = result.names[int(boxes.cls[i])]
                 confidence = float(boxes.conf[i])
                 center_x = (x1 + x2) / 2
                 center_y = (y1 + y2) / 2
                 area = (x2 - x1) * (y2 - y1)
-
-                # Save detection image
                 detection_img = frame[max(0, y1-10):min(frame_height, y2+10),
                                    max(0, x1-10):min(frame_width, x2+10)]
                 img_path = ""
@@ -147,21 +141,15 @@ class FruitDetectionSystem:
                     img_path = os.path.join(self.output_dir, "images", 
                                           f"{detection_id}_{class_name}.jpg")
                     cv2.imwrite(img_path, detection_img)
-
-                # Save mask if available
                 mask_path = ""
                 if isinstance(mask, np.ndarray):
                     mask_path = os.path.join(self.output_dir, "masks", 
                                            f"{detection_id}_{class_name}_mask.png")
                     cv2.imwrite(mask_path, (mask * 255).astype(np.uint8))
-
-                # Update statistics
                 self.stats["total_detections"] += 1
                 self.stats["detections_by_class"][class_name] = \
                     self.stats["detections_by_class"].get(class_name, 0) + 1
                 self.stats["average_confidence"].append(confidence)
-
-                # Prepare detection data
                 detection_data = {
                     "timestamp": timestamp.strftime('%Y-%m-%d %H:%M:%S.%f'),
                     "detection_id": detection_id,
@@ -175,8 +163,6 @@ class FruitDetectionSystem:
                     "frame_width": frame_width,
                     "frame_height": frame_height
                 }
-
-                # Save to CSV
                 csv_row = [
                     detection_data["timestamp"],
                     detection_id,
@@ -195,18 +181,12 @@ class FruitDetectionSystem:
                     writer = csv.writer(f)
                     writer.writerow(csv_row)
 
-                # Print detection information
                 self.print_detection_info(detection_data)
-                
-                # Visualize detection
                 self.draw_detection(display_frame, box, class_name, confidence, mask)
                 
                 output_data.append(detection_data)
-
-        # Print frame summary
         self.print_frame_summary(output_data)
         
-        # Every 100 frames, print session stats
         if self.stats['frame_count'] % 100 == 0:
             self.print_session_stats()
 
