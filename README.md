@@ -60,10 +60,10 @@ Detection Summary:
 strawberryNR | Count:  1 | Avg Confidence: 0.96
 strawberryR  | Count:  2 | Avg Confidence: 0.93
 stem         | Count:  2 | Avg Confidence: 0.94
-'''
+
 ![Alt text](IMG241.jpg)
 
-
+'''
 
 
 ## Notes
