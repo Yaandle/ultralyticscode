@@ -42,6 +42,7 @@ Streams RGB, Depth and Infared
 
 
 ### Predict.py
+'''
 Run inference on folder of images
 Prints to console:
 image 1/1 /home/name-ubuntu/Desktop/code/computervision_code/input/IMG_6891_JPG_jpg.rf.35f9a.jpg: 640x640 2 stems, 1 strawberryNR, 2 strawberryRs, 22.1ms
@@ -59,7 +60,7 @@ Detection Summary:
 strawberryNR | Count:  1 | Avg Confidence: 0.96
 strawberryR  | Count:  2 | Avg Confidence: 0.93
 stem         | Count:  2 | Avg Confidence: 0.94
-
+'''
 ![Alt text](IMG241.jpg)
 
 
