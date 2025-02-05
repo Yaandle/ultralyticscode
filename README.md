@@ -46,6 +46,7 @@ Streams RGB, Depth and Infared
 ## Run inference on folder of images
 Prints to console: 
 '''
+< 
 image 1/1 /home/name-ubuntu/Desktop/code/computervision_code/input/IMG_6891_JPG_jpg.rf.35f9a.jpg: 640x640 2 stems, 1 strawberryNR, 2 strawberryRs, 22.1ms
 Speed: 1.2ms preprocess, 22.1ms inference, 1.2ms postprocess per image at shape (1, 3, 640, 640)
 Processing: IMG_6891_JPG_jpg.rf.35d48ccaadce7e9edc093666974c7f9a.jpg
@@ -61,6 +62,7 @@ strawberryNR | Count:  1 | Avg Confidence: 0.96
 strawberryR  | Count:  2 | Avg Confidence: 0.93
 stem         | Count:  2 | Avg Confidence: 0.94
 '''
+>
 ![Alt text](IMG241.jpg)
 
 
