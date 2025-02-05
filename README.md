@@ -51,7 +51,7 @@ image 1/1 /home/name-ubuntu/Desktop/code/computervision_code/input/IMG_6891_JPG_
 Speed: 1.2ms preprocess, 22.1ms inference, 1.2ms postprocess per image at shape (1, 3, 640, 640)
 Processing: IMG_6891_JPG_jpg.rf.35d48ccaadce7e9edc093666974c7f9a.jpg
 --------------------------------------------------
-Detected strawberryNR | Confidence: 0.96 | Position: (235, 366)
+< Detected strawberryNR | Confidence: 0.96 | Position: (235, 366)
 Detected strawberryR  | Confidence: 0.94 | Position: (424, 321)
 Detected stem         | Confidence: 0.94 | Position: (242, 209)
 Detected stem         | Confidence: 0.94 | Position: (400, 167)
