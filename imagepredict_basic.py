@@ -4,8 +4,8 @@ import torchvision
 import time
 import os
 
-source = '' 
-model = YOLO("")
+source = ''        # Define dataset source
+model = YOLO("")   # Define YOLO model path
 
 
 image_files = [f for f in os.listdir(source) if f.endswith(('.jpg', '.jpeg', '.png'))]
