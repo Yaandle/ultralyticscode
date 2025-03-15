@@ -49,8 +49,9 @@ Streams RGB, Depth and Infared
 Prints to console:
 
 [
+
 Processing: IMG_6891_JPG_jpg.rf.35d48ccaadce7e9edc093666974c7f9a.jpg
---------------------------------------------------
+
 Detected strawberryNR | Confidence: 0.96 | Position: (235, 366)
 Detected strawberryR  | Confidence: 0.94 | Position: (424, 321)
 Detected stem         | Confidence: 0.94 | Position: (242, 209)
@@ -61,6 +62,7 @@ Detection Summary:
 strawberryNR | Count:  1 | Avg Confidence: 0.96
 strawberryR  | Count:  2 | Avg Confidence: 0.93
 stem         | Count:  2 | Avg Confidence: 0.94
+
 ]
 
 
