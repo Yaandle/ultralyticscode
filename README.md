@@ -43,13 +43,13 @@ Streams RGB, Depth and Infared
 
 ### Predict.py
 
-## Run inference on folder of images
+- Run inference on folder of images
 
 
-Prints to console
+Prints to console:
 
-[]
-"Processing: IMG_6891_JPG_jpg.rf.35d48ccaadce7e9edc093666974c7f9a.jpg
+[
+Processing: IMG_6891_JPG_jpg.rf.35d48ccaadce7e9edc093666974c7f9a.jpg
 --------------------------------------------------
 Detected strawberryNR | Confidence: 0.96 | Position: (235, 366)
 Detected strawberryR  | Confidence: 0.94 | Position: (424, 321)
