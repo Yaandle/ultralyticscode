@@ -1,6 +1,8 @@
 # Ultralytics YOLOv8 Inference
 
-This repository contains four applications for running object detection and segmentation using the Ultralytics YOLOv8 model: image, video, camera and webcam source for inference.
+This repository contains applications for running computer vision using the Ultralytics framework: image, video, camera and webcam source for inference.
+
+
 
 ## Getting Started
 
