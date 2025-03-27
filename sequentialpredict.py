@@ -10,10 +10,7 @@ source = "/computervision_datasets/predict"
 results = model(source, show_labels=True, show_boxes=True, show_conf=True, save=True)
 
 for result in results:
-    # Save cropped detections automatically
-    result.save_crop()
-  
-    keypoint_results = keypoint_model(result.save_dir, show_labels=True, show_conf=True, save=True)
+    keypoint_results = keypoint_model(result.save_dir, show_boxes=False, show_labels=True, show_conf=True, save=True, conf=0.4,)
     
     for kp_result in keypoint_results:
         kp_result.save()
