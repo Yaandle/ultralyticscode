@@ -2,9 +2,9 @@
 
 from ultralytics import YOLO
 
-model = YOLO("/computer_vision/models/strawberryv11.pt")
-keypoint_model = YOLO("/computer_vision/models/strawberry_keypoint.pt")
-source = "/computervision_datasets/predict"
+model = YOLO("/computer_vision/models/segmentmodel.pt")
+keypoint_model = YOLO("/computer_vision/models/keypointmodel.pt")
+source = "/datasets/predict"
 
 # Run inference
 results = model(source, show_labels=True, show_boxes=True, show_conf=True, save=True)
