@@ -84,7 +84,7 @@ Stage 1: Object Detection
 Stage 2: Instance Segmentation
 Stage 3: Keypoint Detection
 Creating combined visualization
-
+![Alt text](combvis.jpg)
 
 ## Notes
 
