@@ -52,7 +52,7 @@ Prints to console:
 
 [
 
-Processing: IMG_6891_JPG_jpg.rf.35d48ccaadce7e9edc093666974c7f9a.jpg
+Processing: IMG_6891.jpg
 
 Detected strawberryNR | Confidence: 0.96 | Position: (235, 366)
 Detected strawberryR  | Confidence: 0.94 | Position: (424, 321)
@@ -72,6 +72,7 @@ stem         | Count:  2 | Avg Confidence: 0.94
 ![Alt text](IMG241.jpg)
 
 
+
 ### sequential.py
 
 Define 2 models. 
@@ -80,10 +81,11 @@ Define 2 models.
    
 Define source.
 
-Stage 1: Object Detection
-Stage 2: Instance Segmentation
-Stage 3: Keypoint Detection
-Creating combined visualization
+- Stage 1: Object Detection
+- Stage 2: Instance Segmentation
+- Stage 3: Keypoint Detection
+- Creating combined visualization
+
 ![Alt text](combvis.jpg)
 
 ## Notes
