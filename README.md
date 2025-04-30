@@ -72,6 +72,18 @@ stem         | Count:  2 | Avg Confidence: 0.94
 ![Alt text](IMG241.jpg)
 
 
+### sequential.py
+
+Define 2 models. 
+1. Instance Segmentation (yolov8-seg.pt)
+2. Pose (yolov8-pose.pt)
+   
+Define source.
+
+Stage 1: Object Detection
+Stage 2: Instance Segmentation
+Stage 3: Keypoint Detection
+Creating combined visualization
 
 
 ## Notes
