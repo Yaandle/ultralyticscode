@@ -88,6 +88,17 @@ Define source.
 
 ![Alt text](combvis.jpg)
 
+
+
+
+### cameradepth.py
+Define 1 model.
+Ensure depth camera is plugged in + packages installed.
+Stream RGB and predicts on a frame every 10 secounds, prints results to table. 
+![Alt text](cameradepth.jpg)
+
+
+
 ## Notes
 
 - Remove `device` parameter if not using GPU
