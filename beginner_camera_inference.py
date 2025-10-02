@@ -8,14 +8,13 @@ from ultralytics import YOLO
 import os
 
 # ============ CONFIGURATION ============
-SOURCE = 1  # Camera: 0,1,2 or file: 'video.mp4' or stream: 'rtsp://url'
+SOURCE = 0  # Camera: 0,1,2 or file: 'video.mp4' or stream: 'rtsp://url'
 MODEL_PATH = "models/strawberrysegment.pt"
-CONF = 0.4
+CONF = 0.6
 SAVE_OUTPUT = False
 OUTPUT_DIR = "outputs"
 # =======================================
 
-# Ensure output folder exists
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # --------- GPU Setup ----------
@@ -46,14 +45,9 @@ while True:
     
     # Run YOLO inference on current frame
     results = model.predict(frame, conf=CONF, verbose=False)
-    
-    # Annotate frame
     annotated_frame = results[0].plot()
     
-    # Display
     cv2.imshow("Phase 1: YOLO Inference", annotated_frame)
-    
-    # Quit key
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
