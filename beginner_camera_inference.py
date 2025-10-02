@@ -9,10 +9,12 @@ import os
 
 # ============ CONFIGURATION ============
 SOURCE = 0  # Camera: 0,1,2 or file: 'video.mp4' or stream: 'rtsp://url'
-MODEL_PATH = "models/strawberrysegment.pt"
+SEG_MODEL_PATH = "models/strawberrysegment.pt"
+KPT_MODEL_PATH = "models/strawberrykeypoint.pt"
 CONF = 0.6
 SAVE_OUTPUT = False
 OUTPUT_DIR = "outputs"
+USE_KEYPOINTS = True  # Switch to use keypoint model
 # =======================================
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -23,8 +25,12 @@ print(f"[INFO] Using device: {DEVICE}")
 
 # --------- Model Loading ----------
 try:
-    model = YOLO(MODEL_PATH).to(DEVICE)
-    print("[INFO] Model loaded successfully!")
+    if USE_KEYPOINTS:
+        model = YOLO(KPT_MODEL_PATH).to(DEVICE)
+        print("[INFO] Keypoint model loaded successfully!")
+    else:
+        model = YOLO(SEG_MODEL_PATH).to(DEVICE)
+        print("[INFO] Segmentation model loaded successfully!")
 except Exception as e:
     print(f"[ERROR] Could not load model: {e}")
 
