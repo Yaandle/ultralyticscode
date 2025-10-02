@@ -1,48 +1,63 @@
-import pyrealsense2 as rs
+# ======================== Phase 1: Basic Setup ========================
+# Camera Integration, GPU Setup, Model Loading
+# =====================================================================
+
+import cv2
 import torch
 from ultralytics import YOLO
+import os
 
-class RealSenseCamera:
-    def __init__(self):
-        self.pipeline = rs.pipeline()
-        self.align = rs.align(rs.stream.color)
-        cfg = rs.config()
-        cfg.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
-        cfg.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
-        self.pipeline.start(cfg)
+# ============ CONFIGURATION ============
+SOURCE = 1  # Camera: 0,1,2 or file: 'video.mp4' or stream: 'rtsp://url'
+MODEL_PATH = "models/strawberrysegment.pt"
+CONF = 0.4
+SAVE_OUTPUT = False
+OUTPUT_DIR = "outputs"
+# =======================================
 
-    def get_frames(self):
-        frames = self.pipeline.wait_for_frames()
-        aligned = self.align.process(frames)
-        return aligned.get_color_frame(), aligned.get_depth_frame()
+# Ensure output folder exists
+os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-def setup_model(path):
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    return YOLO(path).to(device)
+# --------- GPU Setup ----------
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+print(f"[INFO] Using device: {DEVICE}")
 
-def run_inference(model, source, out="outputs"):
-    return model.predict(
-        source=source,
-        save=True,
-        conf=0.4,
-        project=out,
-        device=0 if torch.cuda.is_available() else "cpu"
-    )
+# --------- Model Loading ----------
+try:
+    model = YOLO(MODEL_PATH).to(DEVICE)
+    print("[INFO] Model loaded successfully!")
+except Exception as e:
+    print(f"[ERROR] Could not load model: {e}")
 
-class StrawberryDetection:
-    def __init__(self):
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.seg = YOLO("models/strawberrysegment.pt").to(device)
-        self.kpt = YOLO("models/strawberrykeypoint.pt").to(device)
+# --------- Camera Integration ----------
+cap = cv2.VideoCapture(SOURCE)
+if not cap.isOpened():
+    print(f"[ERROR] Could not open camera/source: {SOURCE}")
+else:
+    print(f"[INFO] Camera/source {SOURCE} opened successfully.")
 
-    def run(self, image):
-        seg = self.seg.predict(image, conf=0.4, iou=0.5, verbose=False)
-        kpt = self.kpt.predict(image, conf=0.4, verbose=False)
-        return seg, kpt
+# --------- Simple Inference Loop ----------
+print("[INFO] Starting inference. Press 'q' to quit.")
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        print("[ERROR] Failed to grab frame.")
+        break
+    
+    # Run YOLO inference on current frame
+    results = model.predict(frame, conf=CONF, verbose=False)
+    
+    # Annotate frame
+    annotated_frame = results[0].plot()
+    
+    # Display
+    cv2.imshow("Phase 1: YOLO Inference", annotated_frame)
+    
+    # Quit key
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
 
-if __name__ == "__main__":
-    det = setup_model("models/strawberry_detection.pt")
-    run_inference(det, "sample.jpg")
-    pipeline = StrawberryDetection()
-    seg, kpt = pipeline.run("sample.jpg")
-    print(seg, kpt)
+# Cleanup
+cap.release()
+cv2.destroyAllWindows()
+print("[INFO] Finished Phase 1.")
