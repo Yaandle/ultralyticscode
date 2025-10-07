@@ -1,63 +1,35 @@
-# ======================== Phase 1: Basic Setup ========================
-# Camera Integration, GPU Setup, Model Loading
-# =====================================================================
-
-import cv2
 import torch
 from ultralytics import YOLO
-import os
 
-# ============ CONFIGURATION ============
-SOURCE = 0  # Camera: 0,1,2 or file: 'video.mp4' or stream: 'rtsp://url'
-SEG_MODEL_PATH = "models/strawberrysegment.pt"
-KPT_MODEL_PATH = "models/strawberrykeypoint.pt"
-CONF = 0.6
-SAVE_OUTPUT = False
-OUTPUT_DIR = "outputs"
-USE_KEYPOINTS = True  # Switch to use keypoint model
-# =======================================
+# Check if CUDA-capable GPU is available
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+print(f"Using device: {device}")
 
-os.makedirs(OUTPUT_DIR, exist_ok=True)
-
-# --------- GPU Setup ----------
-DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"[INFO] Using device: {DEVICE}")
-
-# --------- Model Loading ----------
-try:
-    if USE_KEYPOINTS:
-        model = YOLO(KPT_MODEL_PATH).to(DEVICE)
-        print("[INFO] Keypoint model loaded successfully!")
-    else:
-        model = YOLO(SEG_MODEL_PATH).to(DEVICE)
-        print("[INFO] Segmentation model loaded successfully!")
-except Exception as e:
-    print(f"[ERROR] Could not load model: {e}")
-
-# --------- Camera Integration ----------
-cap = cv2.VideoCapture(SOURCE)
-if not cap.isOpened():
-    print(f"[ERROR] Could not open camera/source: {SOURCE}")
-else:
-    print(f"[INFO] Camera/source {SOURCE} opened successfully.")
-
-# --------- Simple Inference Loop ----------
-print("[INFO] Starting inference. Press 'q' to quit.")
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        print("[ERROR] Failed to grab frame.")
-        break
+if device == 'cuda':
+    # Display GPU information
+    print(f"GPU Name: {torch.cuda.get_device_name(0)}")
+    print(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
     
-    # Run YOLO inference on current frame
-    results = model.predict(frame, conf=CONF, verbose=False)
-    annotated_frame = results[0].plot()
+    # Enable PyTorch optimizations for faster inference
+    torch.backends.cudnn.benchmark = True
+    torch.backends.cudnn.deterministic = False
     
-    cv2.imshow("Phase 1: YOLO Inference", annotated_frame)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+    # Enable mixed precision for faster processing with less memory
+    torch.set_float32_matmul_precision('medium')
 
-# Cleanup
-cap.release()
-cv2.destroyAllWindows()
-print("[INFO] Finished Phase 1.")
+# Load the YOLO model and move it to GPU
+model = YOLO("yolov8n.pt")
+model.to(device)
+
+# Verify model is on the correct device
+print(f"Model is running on: {next(model.model.parameters()).device}")
+
+# Configure inference settings for optimal GPU performance
+model.predict(
+    source=0,           # Use webcam
+    device=device,      # Run on GPU if available
+    half=True,          # Use FP16 precision for faster inference
+    show=True,          # Display results
+    conf=0.4,           # Confidence threshold
+    verbose=False       # Reduce console output
+)
