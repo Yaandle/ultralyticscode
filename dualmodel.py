@@ -8,11 +8,11 @@ import cv2
 import os
 
 
-detection_model = YOLO("//computer_vision/models/strawberryv11.pt")
-keypoint_model = YOLO("computer_vision/models/strawberrysegmentYOLOv11.pt")
+detection_model = YOLO("/models/detection.pt")
+keypoint_model = YOLO("/models/keypoint.pt")
 
 
-source_folder = "/computervision_datasets/predict"
+source_folder = "/datasets/predict"
 
 if not os.path.exists(source_folder):
     raise FileNotFoundError(f"Source folder '{source_folder}' does not exist.")
