@@ -1,4 +1,4 @@
-# Streams RGB and every 10 secs takes a frame and runs inference and prints coordinates to table in terminal.
+# Streams RGB and every 10 secs takes a frame and runs inference, and prints coordinates to a table in the terminal.
 
 
 
@@ -8,7 +8,7 @@ import pyrealsense2 as rs
 import cv2
 from ultralytics import YOLO
 
-model = YOLO("/strawberrysegment.pt")
+model = YOLO("/segment.pt")
 
 pipeline = rs.pipeline()
 config = rs.config()
