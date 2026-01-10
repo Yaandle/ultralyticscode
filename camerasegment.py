@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 from ultralytics import YOLO
 
-model = YOLO("/computervision_models/strawberryYOLOv11.pt")           # UPDATE MODEL PATH
+model = YOLO("/computervision_models/YOLOv11.pt")           # UPDATE MODEL PATH
 pipeline = rs.pipeline()
 config = rs.config()
 config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
